@@ -22,12 +22,12 @@ static const uint32_t PWM_FREQ    = 500;
 static const uint8_t  PWM_RES     = 8;
 
 static const float pwmMax_hw = 255.0f;
-const float bDead_V = 2.9f;   // aprox. tensión mínima útil
+const float bDead_V = 2.3f;   // aprox. tensión mínima útil
 //2.9
 // =====================================================
 // PID EN TENSION DE ARMADURA
 // =====================================================
-float Kp = 0.75f;
+float Kp = 0.45f;
 float Ki = 0.0f;
 float Kd = 0.15f;
 
