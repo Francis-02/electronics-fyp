@@ -1,0 +1,103 @@
+#include <Arduino.h>
+#include <PID_v1.h>
+
+/* ===== Motor Pins ===== */
+const int ENA = 5;
+const int IN1 = 9;
+const int IN2 = 10;
+
+/* ===== Encoder Pins ===== */
+const int pinA = 2;
+const int pinB = 3;
+
+/* ===== Encoder Variables ===== */
+volatile long contador = 0;
+
+/* ===== Variables para PID ===== */
+double setpoint = 20;      // Grados objetivo
+double input = 0;         // Grados actuales
+double output = 0;        // PID output (-100 a 100)
+
+/* PID tunings (AJUSTA ESTOS) */
+double Kp = 0.198, Ki = 0.232, Kd = 0.0181;
+
+/* Crear objeto PID */
+PID myPID(&input, &output, &setpoint, Kp, Ki, Kd, DIRECT);
+
+/* ===== Encoder ISR ===== */
+void ISR_A() { contador += (digitalRead(pinA) == digitalRead(pinB)) ? 1 : -1; }
+void ISR_B() { contador += (digitalRead(pinA) != digitalRead(pinB)) ? 1 : -1; }
+
+/* ===== Funciones motor ===== */
+void writePWMPercent(int pwmPercent){
+    pwmPercent = constrain(pwmPercent, 0, 100);
+    int duty = map(pwmPercent, 0, 100, 102, 255);
+    analogWrite(ENA, duty);
+}
+
+void setMotor(int pwm){
+    pwm = constrain(pwm, -100, 100);
+    int pwmAbs = abs(pwm);
+
+    if(pwm > 0){
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+        writePWMPercent(pwmAbs);
+    }
+    else if(pwm < 0){
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, HIGH);
+        writePWMPercent(pwmAbs);
+    }
+    else{
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, LOW);
+        analogWrite(ENA, 0);
+    }
+}
+
+void setup() {
+    Serial.begin(9600);
+
+    pinMode(ENA, OUTPUT);
+    pinMode(IN1, OUTPUT);
+    pinMode(IN2, OUTPUT);
+
+    pinMode(pinA, INPUT_PULLUP);
+    pinMode(pinB, INPUT_PULLUP);
+
+    attachInterrupt(digitalPinToInterrupt(pinA), ISR_A, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(pinB), ISR_B, CHANGE);
+
+    // Configurar PID
+    myPID.SetMode(AUTOMATIC);
+    myPID.SetOutputLimits(-100, 100);  // Límite para el motor
+
+    Serial.println("READY");
+}
+
+void loop() {
+    // ===== Leer encoder en grados =====
+    long c;
+    noInterrupts();
+    c = contador;
+    interrupts();
+
+    input = -c * 0.02;  // Conversión a grados
+
+    // Ejecutar PID
+    myPID.Compute();
+
+    // Aplicar salida del PID al motor
+    setMotor((int)output);
+
+    // Mostrar datos
+    Serial.print("Setpoint: ");
+    Serial.print(setpoint);
+    Serial.print("\tAngle: ");
+    Serial.print(input);
+    Serial.print("\tPID Out: ");
+    Serial.println(output);
+
+    delay(2); // muestreo
+}
