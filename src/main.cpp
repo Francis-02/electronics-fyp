@@ -1,6 +1,8 @@
 //HAPTIC_LIDER: MAC: E0:8C:FE:60:D6:40
 //HAPTIC SEGUIDOR_MAC: MAC: E0:8C:FE:60:F9:04
 
+
+
 #include <Arduino.h>
 #include "sensors.h"
 #include "control.h"
