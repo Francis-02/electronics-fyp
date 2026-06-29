@@ -45,42 +45,6 @@ volatile float g_position_rad = 0.0f;
 volatile float g_error_rad    = 0.0f;
 volatile float g_pwm_percent  = 0.0f;
 
-// =====================================================
-// MODELO VIRTUAL MASA-RESORTE-AMORTIGUADOR
-// Entrada: posición angular real del haptic paddle
-// Salida: referencia angular nueva para el PID
-//
-// Idea:
-// El sistema toma como equilibrio la posición inicial.
-// Si el usuario mueve el haptic respecto a esa posición,
-// se genera una referencia en sentido contrario.
-// =====================================================
-float modelMRA(float theta_rad, float theta_dot_rad_s)
-{
-
-  const float kv_neg      = 0.01f;   // cancela amortiguamiento PID
-
-  // Parámetros del oscilador virtual
-  const float Ts          = 0.01f;
-  const float M           = 0.05f;   // inercia virtual
-  const float kp_mra      = 20.00f;    // 
-  const float kv_muelle   = 0.0f;    // amortiguamiento interno del muelle
-  const float k_coupling  = 0.0f;    // acoplamiento usuario-muelle
-
-  static float theta_eq   = 0.0f;
-  static float x_pos      = 0.0f;   // posición del muelle virtual
-  static float x_vel      = 0.0f;   // velocidad del muelle virtual
-  static bool  init       = false;
-
-  if (!init)
-  {
-    theta_eq = theta_rad;
-    x_pos    = theta_rad;
-    x_vel    = 0.0f;
-    init     = true;
-  }
-  return kp_mra * (theta_rad) + kv_muelle * (theta_dot_rad_s);
-}
 
 // =====================================================
 // INIT
@@ -122,7 +86,6 @@ int vArmToPWM(float Va)
 
   if (Va > 10.6f) Va = 10.6f;
 
-  /*
 
   if (Va >= bDead_V)
   {
@@ -135,7 +98,7 @@ int vArmToPWM(float Va)
   else
   {
     pwm_percent = (Va / Vmax) * 100.0f;
-  }*/
+  }
 
   pwm_percent = (Va / Vmax) * 100.0f;
 
@@ -334,160 +297,7 @@ void controlTask(void *pvParameters)
 
 
     refTarget_rad = other_position_rad;
-/*
-    if (Serial.available())
-    {
-        char tecla = Serial.read();
-
-        switch (tecla)
-        {
-            case ' ':
-                refTarget_rad += 5.0f;
-                break;
-
-            case 'b':
-                refTarget_rad -= 5.0f;
-                break;
-        }
-
-        Serial.print("Referencia: ");
-        Serial.println(refTarget_rad);
-    }
-    */
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
-  }
-
-}
-
-/*
-void controlTask(void *pvParameters)
-{
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(10);
-  const float Ts = 0.01f;   // 10 ms
-
-  // ==============================
-  // PARÁMETROS DE LOS ENSAYOS PWM
-  // ==============================
-  const float stepAmp   = 100.0f;   // % PWM para escalones
-  const float rampMax   = 100.0f;   // % PWM máximo de la rampa
-  const float rampDead  = 24.0f;    // % PWM mínimo de rampa (zona muerta)
-  const float stepTime  = 1.0f;     // s
-  const float rampTime  = 1.0f;     // s
-
-  const float rampSlope = (rampMax - rampDead) / rampTime;   // %PWM/s
-
-  // Filtro de velocidad
-  const float alpha = 0.98f;
-
-  enum TestType
-  {
-    STEP_POS = 0,
-    STEP_NEG,
-    RAMP_POS,
-    RAMP_NEG
-  };
-
-  TestType test = STEP_POS;
-  float tTest = 0.0f;
-  float pwm_percent = 0.0f;
-
-  float position_prev = getPositionRad();
-  float velocity_raw = 0.0f;
-  float velocity_f = 0.0f;
-
-  for (;;)
-  {
-    float position_rad = getPositionRad();
-
-    // ==============================
-    // Cálculo de velocidad
-    // ==============================
-    velocity_raw = (position_rad - position_prev) / Ts;
-    velocity_f = alpha * velocity_f + (1.0f - alpha) * velocity_raw;
-    position_prev = position_rad;
-
-    // ==============================
-    // Generación de ensayos PWM
-    // ==============================
-    switch (test)
-    {
-      case STEP_POS:
-        pwm_percent = stepAmp;
-        if (tTest >= stepTime)
-        {
-          test = STEP_NEG;
-          tTest = 0.0f;
-        }
-        break;
-
-      case STEP_NEG:
-        pwm_percent = -stepAmp;
-        if (tTest >= stepTime)
-        {
-          test = RAMP_POS;
-          tTest = 0.0f;
-        }
-        break;
-
-      case RAMP_POS:
-        pwm_percent = rampDead + rampSlope * tTest;
-        if (pwm_percent > rampMax)
-          pwm_percent = rampMax;
-
-        if (tTest >= rampTime)
-        {
-          test = RAMP_NEG;
-          tTest = 0.0f;
-        }
-        break;
-
-      case RAMP_NEG:
-        pwm_percent = -(rampDead + rampSlope * tTest);
-        if (pwm_percent < -rampMax)
-          pwm_percent = -rampMax;
-
-        if (tTest >= rampTime)
-        {
-          test = STEP_POS;
-          tTest = 0.0f;
-        }
-        break;
-    }
-
-    // Aplicar PWM directamente
-    setMotorPWM_percent(100.0f);
-
-    // Variables compartidas
-    portENTER_CRITICAL(&mux);
-    g_position_rad   = position_rad;
-    g_error_rad      = 0.0f;
-    g_pwm_percent    = pwm_percent;
-    g_velocity_rad_s = velocity_f;
-    portEXIT_CRITICAL(&mux);
-
-    tTest += Ts;
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
-  }
-}
-*/
-
-/*
-void controlTask(void *pvParameters)
-{
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(100);
-
-  for (;;)
-  {
-    float position_rad = getPositionRad();
-
-    g_position_rad = position_rad;
-
-    Serial.print("Posicion: ");
-    Serial.println(position_rad);
 
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }
-*/
