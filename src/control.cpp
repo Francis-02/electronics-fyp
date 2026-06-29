@@ -290,12 +290,11 @@ void controlTask(void *pvParameters)
 
     // =====================================================
     // MODELO MASA-RESORTE-AMORTIGUADOR DESACTIVADO
-    // Se deja comentado para mantener el código original,
-    // pero ahora se usa un PID fijo con referencia fija.
+    // Se usa un PID fijo con referencia fija.
     // =====================================================
     // float refMRA_rad = modelMRA(position_rad, velocity_f);
 
-    // PID FIJO:
+    // PID:
     float Va = controladorPID(refTarget_rad, position_rad);
 
     // ANTES CON MRA:
